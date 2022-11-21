@@ -8,6 +8,8 @@ defineProps<{ msg: string }>()
 const state = reactive({
   stage: undefined as any,
   layer: undefined as any,
+  robotLayer: undefined as any,
+  objectLayer: undefined as any,
   point: 0,
   circle: undefined as any,
   line: undefined as any,
@@ -16,7 +18,8 @@ const state = reactive({
     "robot1": undefined as any,
     "robot2": undefined as any,
     "robot3": undefined as any,
-  }
+  },
+  orderNumber: undefined as any
 })
 
 function wheel(e: WheelEvent): void {
@@ -83,8 +86,16 @@ function createLine() {
   ]
 
   let pointList = [
-    {x: 80, y: 506}, {x: 80, y: 308}, {x: 461, y: 311}, {x: 461, y: 257}, {x: 245, y: 490}, {x: 245, y: 310},
-    {x: 330, y: 490}, {x: 330, y: 310}, {x: 395, y: 490}, {x: 395, y: 311}
+    {x: 80, y: 506, name: 'line1'}, {x: 80, y: 308, name: 'line2'}, {x: 461, y: 311, name: 'line3'}, {
+      x: 461,
+      y: 257,
+      name: 'line4'
+    }, {x: 245, y: 490, name: 'line5'}, {x: 245, y: 310, name: 'line6'},
+    {x: 330, y: 490, name: 'line7'}, {x: 330, y: 310, name: 'line8'}, {x: 395, y: 490, name: 'line9'}, {
+      x: 395,
+      y: 311,
+      name: 'line10'
+    }
   ]
 
   for (var i = 0; i < lineList.length; i++) {
@@ -106,12 +117,51 @@ function createLine() {
       y: pointList[i].y,
       radius: 3,
       fill: 'blue',
+      name: pointList[i].name
     });
+
+    var tooltip = new Konva.Label({
+      x:  pointList[i].x,
+      y: pointList[i].y,
+      opacity: 0.8,
+    });
+
+    tooltip.add(
+        new Konva.Tag({
+          fill: 'green',
+          pointerDirection: 'down',
+          pointerWidth: 0,
+          pointerHeight: 10,
+        })
+    );
+
+    tooltip.add(
+        new Konva.Text({
+          text: pointList[i].name,
+          fontFamily: 'Calibri',
+          fontSize: 10,
+          padding: 3,
+          fill: 'white',
+        })
+    );
+
+    // var complexText = new Konva.Text({
+    //   x: circle.x(),
+    //   y: circle.y(),
+    //   text: pointList[i].name,
+    //   fontSize: 15,
+    //   width: 100,
+    //   fontFamily: 'Calibri',
+    //   fill: '#555',
+    //   align: 'center',
+    // });
+    // group.add(complexText);
+    group.add(tooltip);
     group.add(circle);
   }
 
 
-  state.layer.add(group)
+  state.objectLayer.add(group)
 
 
   // state.line = new Konva.Line({
@@ -136,53 +186,113 @@ function createAMR() {
   list.forEach(item => {
     let imageObj = new Image();
     imageObj.onload = function () {
-
       state.robots[item.name] = new Konva.Image({
         x: item.points.x, // 왼쪽 꼭지점 기준
         y: item.points.y, // 왼쪽 꼭지점 기준
         image: imageObj,
         scale: {x: 0.2, y: 0.2},
-        rotation: 0 // x,y 를 기준으로 돌아감 제자리에서 돌아가는거 x
+        offset: { // default 0 !!
+          x: imageObj.width / 2,
+          y: imageObj.height / 2
+        },
+        rotation: 0 // offset x,y 를 기준으로 돌아감 그래서 offset을 너비의 반으로 옮겨야지 가운데서 돌아감
       });
-      // add the shape to the layer
-      console.log(state.robots[item.name].width(),"3")
-
-      state.robots[item.name].offsetX = state.robots[item.name].width()/2
-      state.robots[item.name].offsetY = state.robots[item.name].height()/2
-      state.layer.add(state.robots[item.name]);
+      state.robotLayer.add(state.robots[item.name]);
     };
     imageObj.src = amrUrl;
   })
 }
 
-function createRect(x: number, y: number) {
-  let rect = new Konva.Rect({
-    x: x,
-    y: y,
-    width: 50,
-    height: 50,
-    fill: 'white',
-    stroke: 'black',
-    strokeWidth: 1,
-    cornerRadius: 7,
-  });
-
-  var complexText = new Konva.Text({
-    x: rect.x(),
-    y: rect.y(),
-    width: rect.width(),
-    height: rect.height(),
-    verticalAlign: 'middle',
-    align: 'center',
-    text: "TM",
-    fontSize: 10,
-    fontFamily: 'Calibri',
-    fill: '#555',
-  });
+function createRect() {
+  let rectList = [{x: 80, y: 550, name:'RACK1'}, {x: 0, y: 0, name:'RACK2'}, {x: 245, y: 530, name:'RACK3'}, {x: 330, y: 530, name:'RACK4'}, {x: 395, y: 530, name:'RACK5'}, {x: 450, y: 530, name:'RACK6'}, {x: 533, y: 500, name:'RACK7'}, {x: 437, y: 210, name:'RACK8'}]
 
 
-  state.layer.add(rect);
-  state.layer.add(complexText);
+  rectList.forEach(item => {
+    let objectGroup = new Konva.Group({
+      x: item.x,
+      y: item.y,
+      rotation: 20,
+    });
+    let rect = new Konva.Rect({
+      x: item.x,
+      y:  item.y,
+      width: 50,
+      height: 50,
+      offset:{
+        x:25,
+        y:25
+      },
+      fill: 'white',
+      stroke: 'black',
+      strokeWidth: 1,
+      cornerRadius: 7,
+    });
+
+    let rectInner = new Konva.Rect({
+      x: rect.x(),
+      y: rect.y()-10,
+      width: 40,
+      height: 20,
+      offset:{
+        x:20,
+        y:10
+      },
+      fill: 'blue',
+      stroke: 'black',
+      strokeWidth: 1,
+      cornerRadius: 2,
+    });
+
+    var rectInnerText = new Konva.Text({
+      x: rectInner.x(),
+      y: rectInner.y(),
+      offset:{
+        x:20,
+        y:10
+      },
+      width: rectInner.width(),
+      height: rectInner.height(),
+      verticalAlign: 'middle',
+      align: 'center',
+      text: '39',
+      fontSize: 10,
+      fontFamily: 'Calibri',
+      fill: '#ffffff',
+    });
+
+    var complexText = new Konva.Text({
+      x: rect.x(),
+      y: rect.y(),
+      width: rect.width(),
+      height: rect.height(),
+      verticalAlign: 'middle',
+      align: 'center',
+      text: "TM",
+      fontSize: 10,
+      fontFamily: 'Calibri',
+      fill: '#555',
+    });
+
+    // var orderNumber = new Konva.Text({
+    //   x: rect.x(),
+    //   y: rect.y(),
+    //   width: rect.width(),
+    //   height: rect.height(),
+    //   verticalAlign: 'middle',
+    //   align: 'center',
+    //   text: name,
+    //   fontSize: 10,
+    //   fontFamily: 'Calibri',
+    //   fill: '#555',
+    // });
+
+
+    state.objectLayer.add(rect);
+    state.objectLayer.add(rectInner);
+    state.objectLayer.add(rectInnerText);
+    // state.objectLayer.add(orderNumber);
+    state.objectLayer.add(complexText);
+  })
 }
 
 function createCircle(x: number, y: number) {
@@ -201,7 +311,37 @@ function createCircle(x: number, y: number) {
     rotationSnaps: [0, 90, 180, 270],
     resizeEnabled: false,
   });
-  state.layer.add(transForm);
+  state.objectLayer.add(transForm);
+}
+
+function makeBackground() {
+
+  const xSnaps = Math.round(state.stage.width() / 10);
+  const ySnaps = Math.round(state.stage.height() / 10);
+  const cellWidth = state.stage.width() / xSnaps;
+  const cellHeight = state.stage.height() / ySnaps;
+
+  for (var i = 0; i < xSnaps; i++) {
+    state.layer.add(
+        new Konva.Line({
+          x: i * cellWidth,
+          points: [0, 0, 0, state.stage.height()],
+          stroke: 'rgba(0,0,0,0.08)',
+          strokeWidth: 1,
+        })
+    );
+  }
+
+  for (var i = 0; i < ySnaps; i++) {
+    state.layer.add(
+        new Konva.Line({
+          y: i * cellHeight,
+          points: [0, 0, state.stage.width(), 0],
+          stroke: 'rgba(0,0,0,0.08)',
+          strokeWidth: 1,
+        })
+    );
+  }
 }
 
 function createPath() {
@@ -231,27 +371,27 @@ function createStage() {
   });
   state.stage.container().style.backgroundColor = '#d3d3d33b';
   state.layer = new Konva.Layer();
+  state.robotLayer = new Konva.Layer();
+  state.objectLayer = new Konva.Layer();
 }
 
 function createShape() {
+  makeBackground()
   // createPath()
   createAMR()
   createLine()
-  let rectList = [{x: 55, y: 500}, {x: 0, y: 0}, {x: 220, y: 450}, {x: 304, y: 450}, {x: 370, y: 450}, {
-    x: 450,
-    y: 450
-  }, {x: 533, y: 450}, {x: 437, y: 210}]
-  rectList.forEach(item => {
-    createRect(item.x, item.y)
-  })
-
+  createRect()
   createCircle(50, 50)
 
   state.stage.add(state.layer);
+  state.stage.add(state.robotLayer);
+  state.stage.add(state.objectLayer);
+
+  console.log(state.stage,"stage")
 }
 
 function moveShape(num: number) {
-  console.log(num,"num")
+  console.log(num, "num")
   // var amplitude = 100;
   // var period = 2000;
   //
@@ -273,7 +413,7 @@ function moveShape(num: number) {
   // }, 2000)
 
   // {x: 80, y: 308}, {x: 461, y: 311}, {x: 461, y: 257},
-  switch (num){
+  switch (num) {
     case 1:
       state.robots.robot3.position({x: 80, y: 308})
       break;
