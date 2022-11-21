@@ -14,12 +14,15 @@ const state = reactive({
   circle: undefined as any,
   line: undefined as any,
   path: undefined as any,
+  eventX:0,
+  eventY:0,
+  eventDegree:0,
   robots: {
     "robot1": undefined as any,
     "robot2": undefined as any,
     "robot3": undefined as any,
   },
-  orderNumber: undefined as any
+  orderNumber: {} as any
 })
 
 function wheel(e: WheelEvent): void {
@@ -121,7 +124,7 @@ function createLine() {
     });
 
     var tooltip = new Konva.Label({
-      x:  pointList[i].x,
+      x: pointList[i].x,
       y: pointList[i].y,
       opacity: 0.8,
     });
@@ -186,70 +189,98 @@ function createAMR() {
   list.forEach(item => {
     let imageObj = new Image();
     imageObj.onload = function () {
-      state.robots[item.name] = new Konva.Image({
-        x: item.points.x, // 왼쪽 꼭지점 기준
-        y: item.points.y, // 왼쪽 꼭지점 기준
-        image: imageObj,
-        scale: {x: 0.2, y: 0.2},
-        offset: { // default 0 !!
-          x: imageObj.width / 2,
-          y: imageObj.height / 2
+      state.robots[item.name] = {
+        Konva : new Konva.Image({
+          x: item.points.x, // 왼쪽 꼭지점 기준
+          y: item.points.y, // 왼쪽 꼭지점 기준
+          image: imageObj,
+          scale: {x: 0.2, y: 0.2},
+          offset: { // default 0 !!
+            x: imageObj.width / 2,
+            y: imageObj.height / 2
+          },
+          rotation: 0 // offset x,y 를 기준으로 돌아감 그래서 offset을 너비의 반으로 옮겨야지 가운데서 돌아감
+        }),
+        tween : undefined
+      }
+      state.robotLayer.add(state.robots[item.name].Konva);
+
+      state.robots[item.name].tween = new Konva.Tween({
+        node: state.robots[item.name].Konva,
+        x: state.eventX,
+        y: state.eventY,
+        duration: 1,
+        rotation: state.eventDegree,
+        onUpdate: (e:any) => {
+          console.log(e,"eeeeeeee")
         },
-        rotation: 0 // offset x,y 를 기준으로 돌아감 그래서 offset을 너비의 반으로 옮겨야지 가운데서 돌아감
+        onFinish: () => console.log('finished'),
       });
-      state.robotLayer.add(state.robots[item.name]);
+
     };
     imageObj.src = amrUrl;
   })
 }
 
 function createRect() {
-  let rectList = [{x: 80, y: 550, name:'RACK1'}, {x: 0, y: 0, name:'RACK2'}, {x: 245, y: 530, name:'RACK3'}, {x: 330, y: 530, name:'RACK4'}, {x: 395, y: 530, name:'RACK5'}, {x: 450, y: 530, name:'RACK6'}, {x: 533, y: 500, name:'RACK7'}, {x: 437, y: 210, name:'RACK8'}]
-
+  let rectList = [{x: 80, y: 550, name: 'RACK1'}, {x: 245, y: 530, name: 'RACK3'}, {
+    x: 330,
+    y: 530,
+    name: 'RACK4'
+  }, {x: 395, y: 530, name: 'RACK5'}, {x: 450, y: 530, name: 'RACK6'}, {x: 533, y: 500, name: 'RACK7'}, {
+    x: 437,
+    y: 210,
+    name: 'RACK8'
+  }]
 
   rectList.forEach(item => {
-    let objectGroup = new Konva.Group({
+    let group = new Konva.Group({
       x: item.x,
       y: item.y,
-      rotation: 20,
+      offset: {
+        x: 25,
+        y: 25
+      },
     });
+
     let rect = new Konva.Rect({
-      x: item.x,
-      y:  item.y,
       width: 50,
       height: 50,
-      offset:{
-        x:25,
-        y:25
-      },
       fill: 'white',
       stroke: 'black',
       strokeWidth: 1,
       cornerRadius: 7,
     });
 
+    group.add(rect)
+
     let rectInner = new Konva.Rect({
-      x: rect.x(),
-      y: rect.y()-10,
+      x: 5,
+      y: 5,
       width: 40,
       height: 20,
-      offset:{
-        x:20,
-        y:10
-      },
       fill: 'blue',
       stroke: 'black',
       strokeWidth: 1,
       cornerRadius: 2,
     });
 
+    let rectInner2 = new Konva.Rect({
+      x: 5,
+      y: 25,
+      width: 40,
+      height: 20,
+      fill: 'white',
+      stroke: 'black',
+      strokeWidth: 1,
+      cornerRadius: 2,
+    });
+
+    group.add(rectInner).add(rectInner2)
+
     var rectInnerText = new Konva.Text({
       x: rectInner.x(),
       y: rectInner.y(),
-      offset:{
-        x:20,
-        y:10
-      },
       width: rectInner.width(),
       height: rectInner.height(),
       verticalAlign: 'middle',
@@ -260,18 +291,39 @@ function createRect() {
       fill: '#ffffff',
     });
 
-    var complexText = new Konva.Text({
-      x: rect.x(),
-      y: rect.y(),
-      width: rect.width(),
-      height: rect.height(),
+    var rectInnerText2 = new Konva.Text({
+      x: rectInner2.x(),
+      y: rectInner2.y(),
+      width: rectInner.width(),
+      height: rectInner.height(),
       verticalAlign: 'middle',
       align: 'center',
-      text: "TM",
+      text: '8',
       fontSize: 10,
       fontFamily: 'Calibri',
-      fill: '#555',
+      fill: 'black',
     });
+
+    // state.orderNumber = {
+    //   ...state.orderNumber,...{[item.name]:rectInnerText2}
+    // }
+
+    state.orderNumber = {...state.orderNumber,...{[item.name]: rectInnerText2}}
+
+    group.add(rectInnerText).add(rectInnerText2)
+
+    // var complexText = new Konva.Text({
+    //   x: rect.x(),
+    //   y: rect.y(),
+    //   width: rect.width(),
+    //   height: rect.height(),
+    //   verticalAlign: 'middle',
+    //   align: 'center',
+    //   text: "TM",
+    //   fontSize: 10,
+    //   fontFamily: 'Calibri',
+    //   fill: '#555',
+    // });
 
     // var orderNumber = new Konva.Text({
     //   x: rect.x(),
@@ -287,31 +339,40 @@ function createRect() {
     // });
 
 
-    state.objectLayer.add(rect);
-    state.objectLayer.add(rectInner);
-    state.objectLayer.add(rectInnerText);
+    state.objectLayer.add(group);
+    // state.objectLayer.add(rectInner);
+    // state.objectLayer.add(rectInnerText);
     // state.objectLayer.add(orderNumber);
-    state.objectLayer.add(complexText);
+    // state.objectLayer.add(complexText);
   })
+
+  console.log(state.orderNumber, "orderNumber")
 }
 
 function createCircle(x: number, y: number) {
-  state.circle = new Konva.Circle({
+
+  let group = new Konva.Group({
+    x: 100,
+    y: 100,
+  });
+  let test = new Konva.Circle({
     x,
     y,
     radius: 10,
     fill: 'red',
   });
 
-  state.layer.add(state.circle);
+  group.add(test)
 
-  let transForm = new Konva.Transformer({
-    nodes: [state.circle],
-    centeredScaling: false,
-    rotationSnaps: [0, 90, 180, 270],
-    resizeEnabled: false,
-  });
-  state.objectLayer.add(transForm);
+  state.layer.add(group);
+
+  // let transForm = new Konva.Transformer({
+  //   nodes: [state.circle],
+  //   centeredScaling: false,
+  //   rotationSnaps: [0, 90, 180, 270],
+  //   resizeEnabled: false,
+  // });
+  // state.objectLayer.add(transForm);
 }
 
 function makeBackground() {
@@ -381,13 +442,13 @@ function createShape() {
   createAMR()
   createLine()
   createRect()
-  createCircle(50, 50)
+  createCircle(100, 0)
 
   state.stage.add(state.layer);
   state.stage.add(state.robotLayer);
   state.stage.add(state.objectLayer);
 
-  console.log(state.stage,"stage")
+  console.log(state.stage, "stage")
 }
 
 function moveShape(num: number) {
@@ -415,17 +476,79 @@ function moveShape(num: number) {
   // {x: 80, y: 308}, {x: 461, y: 311}, {x: 461, y: 257},
   switch (num) {
     case 1:
-      state.robots.robot3.position({x: 80, y: 308})
+      // state.robots.robot3.Konva.position({x: 80, y: 308})
+      // state.robots.robot3.Konva.rotation(90)
+      // state.eventX = 80
+      // state.eventY = 308
+      // state.eventDegree = 90
+      // console.log(state.robots.robot3.tween,"tween")
+      // state.robots.robot3.tween.destroy();
+      state.robots.robot3.tween =
+          new Konva.Tween({
+            node: state.robots.robot3.Konva,
+            duration: 1,
+            x:80,
+            y:305,
+            // rotation: 60,
+          }).play()
+
+      state.orderNumber['RACK1'].text('1000')
       break;
     case 2:
-      state.robots.robot3.position({x: 461, y: 311})
+      // state.robots.robot3.position({x: 461, y: 311})
+      // state.robots.robot3.rotation(180)
+      // state.orderNumber['RACK1'].text('90')
+      state.robots.robot3.tween =
+          new Konva.Tween({
+            node: state.robots.robot3.Konva,
+            duration: 1,
+            x:461,
+            y:311,
+            // rotation: 180,
+          }).play()
       break;
     case 3:
-      state.robots.robot3.position({x: 461, y: 257})
+      // state.robots.robot3.position({x: 461, y: 257})
+      // state.robots.robot3.rotation(90)
+      // state.orderNumber['RACK1'].text('10')
+      state.robots.robot3.tween =
+          new Konva.Tween({
+            node: state.robots.robot3.Konva,
+            duration: 1,
+            x:461,
+            y:257,
+            // rotation:90,
+          }).play()
       break;
     default:
       break;
   }
+
+  // // number of steps in animation
+  // var steps = 100;
+  // var pathLen = state.path.getLength();
+  // console.log(pathLen, "pathLen")
+  // var step = pathLen / steps;
+  // console.log(step, "step")
+  // var frameCnt = 0, pos = 0, pt;
+  //
+  // console.log(state.line, "line")
+  // let test = state.line.getClientRect
+  // console.log(test, "test")
+  // let anim = new Konva.Animation(function (frame) {
+  //   pos = pos + 1;
+  //   pt = state.path.getPointAtLength(pos * step);
+  //   console.log(pos, "pos")
+  //   console.log(pos * step, "pos * step")
+  //   console.log(pt, "pt")
+  //   state.circle.position({x: pt.x, y: pt.y});
+  //   // setTimeout(()=>{
+  //   //   anim.stop();
+  //   // },500)
+  // }, state.layer);
+  //
+  // anim.start();
+
 
   // // number of steps in animation
   // var steps = 100;
