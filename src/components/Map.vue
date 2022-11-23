@@ -28,9 +28,12 @@ enum RackState {
   Load
 }
 
-interface KonvaRobot {
-  Konva: Konva.Shape,
-  tween: Konva.Tween
+interface RobotList {
+  [key:string] : Konva.Shape
+}
+
+interface OrderList {
+  [key:string] : Konva.Shape | any
 }
 
 const ui = reactive({
@@ -38,15 +41,15 @@ const ui = reactive({
 })
 
 const state = reactive({
-  stage: undefined as any,
-  layer: undefined as any,
-  robotLayer: undefined as any,
-  objectLayer: undefined as any,
+  stage: undefined as Konva.Stage | any,
+  layer: new Konva.Layer,
+  robotLayer: new Konva.Layer,
+  objectLayer:new Konva.Layer,
   circle: undefined as any,
   line: undefined as any,
   path: undefined as any,
-  robots: {} as any,
-  orderNumber: {} as any
+  robots: {} as RobotList,
+  orderNumber: {} as OrderList,
 })
 
 function makeTweenRotate(shape: any, angle: number) {
@@ -77,7 +80,7 @@ function makeTween(shape: any, x: number, y: number, angle?: number) {
 }
 
 function wheel(e: WheelEvent): void {
-  if (state.stage != null) {
+  if (state.stage) {
     const scaleBy = 1.15;
     const oldScale = state.stage.scaleX();
 
@@ -200,7 +203,7 @@ function createLine() {
   state.objectLayer.add(group)
 }
 
-function setColor(shape: Konva.Shape, state: any) {
+function setColor(shape: Konva.Shape, state: any):void {
   shape.cache();
   shape.filters([Konva.Filters.RGB]);
   let color;
@@ -236,7 +239,7 @@ function setColor(shape: Konva.Shape, state: any) {
   shape.alpha(color.ALPHA);
 }
 
-function copyShape(copyTarget: Konva.Shape, item: any) {
+function copyShape(copyTarget: Konva.Shape, item: any):Konva.Shape {
 
   let robot = copyTarget.clone({
     x: item.points.x,
@@ -249,7 +252,7 @@ function copyShape(copyTarget: Konva.Shape, item: any) {
   return robot;
 }
 
-  function createImage() {
+  function createImage():Promise<Konva.Shape> {
     return new Promise((resolve)=>{
       let img = new Image();
       img.onload = () => {
@@ -281,7 +284,7 @@ function copyShape(copyTarget: Konva.Shape, item: any) {
     })
   }
 
-  async function createAMR() {
+  async function createAMR():Promise<void> {
     let list = [
       {name: 'robot1', points: {x: 0, y: 0}},
       {name: 'robot2', points: {x: 20, y: 430}},
@@ -295,7 +298,7 @@ function copyShape(copyTarget: Konva.Shape, item: any) {
     })
   }
 
-  function createRect() {
+  function createRect():void {
     let rectList = [{x: 80, y: 550, name: 'RACK1'}, {x: 245, y: 530, name: 'RACK3'}, {x: 330, y: 530, name: 'RACK4'}, {x: 395, y: 530, name: 'RACK5'},{x: 460, y: 190, name: 'RACK8'}]
 
     rectList.forEach(item => {
@@ -356,7 +359,7 @@ function copyShape(copyTarget: Konva.Shape, item: any) {
         fill: '#ffffff',
       });
 
-      var rectInnerText2 = new Konva.Text({
+      let rectInnerText2 = new Konva.Text({
         x: rectInner2.x(),
         y: rectInner2.y(),
         width: rectInner.width(),
@@ -389,7 +392,7 @@ function copyShape(copyTarget: Konva.Shape, item: any) {
     })
   }
 
-  function createCircle(x: number, y: number) {
+  function createCircle(x: number, y: number):void {
 
     let group = new Konva.Group({
       x: 100,
@@ -407,37 +410,39 @@ function copyShape(copyTarget: Konva.Shape, item: any) {
     state.layer.add(group);
   }
 
-  function makeBackground() {
+  function makeBackground():void {
 
-    const xSnaps = Math.round(state.stage.width() / 10);
-    const ySnaps = Math.round(state.stage.height() / 10);
-    const cellWidth = state.stage.width() / xSnaps;
-    const cellHeight = state.stage.height() / ySnaps;
+    if(state.stage){
+      const xSnaps = Math.round(state.stage.width() / 10);
+      const ySnaps = Math.round(state.stage.height() / 10);
+      const cellWidth = state.stage.width() / xSnaps;
+      const cellHeight = state.stage.height() / ySnaps;
 
-    for (var i = 0; i < xSnaps; i++) {
-      state.layer.add(
-          new Konva.Line({
-            x: i * cellWidth,
-            points: [0, 0, 0, state.stage.height()],
-            stroke: 'rgba(0,0,0,0.08)',
-            strokeWidth: 1,
-          })
-      );
-    }
+      for (let i = 0; i < xSnaps; i++) {
+        state.layer.add(
+            new Konva.Line({
+              x: i * cellWidth,
+              points: [0, 0, 0, state.stage.height()],
+              stroke: 'rgba(0,0,0,0.08)',
+              strokeWidth: 1,
+            })
+        );
+      }
 
-    for (var i = 0; i < ySnaps; i++) {
-      state.layer.add(
-          new Konva.Line({
-            y: i * cellHeight,
-            points: [0, 0, state.stage.width(), 0],
-            stroke: 'rgba(0,0,0,0.08)',
-            strokeWidth: 1,
-          })
-      );
+      for (let i = 0; i < ySnaps; i++) {
+        state.layer.add(
+            new Konva.Line({
+              y: i * cellHeight,
+              points: [0, 0, state.stage.width(), 0],
+              stroke: 'rgba(0,0,0,0.08)',
+              strokeWidth: 1,
+            })
+        );
+      }
     }
   }
 
-  function createPath() {
+  function createPath():void {
     // Load the path points up using M = moveto, L = lineto.
     // var data = [{"x":0,"y":0},{"x":50,"y":50},{"x":141,"y":79},{"x":181.5,"y":78.5},{"x":218,"y":62},{"x":223,"y":40},{"x":240,"y":26},{"x":259.5,"y":25},{"x":271,"y":40},{"x":292.5,"y":53},{"x":311.25,"y":55.5},{"x":330.625,"y":46.75},{"x":332.3125,"y":30.375},{"x":349.15625,"y":10.1875},{"x":374.578125,"y":10.09375},{"x":392,"y":26},{"x":411,"y":36},{"x":444.5,"y":37},{"x":453.875,"y":27.25},{"x":463.25,"y":17.5},{"x":472.9375,"y":10.625},{"x":494.625,"y":15.75},{"x":530,"y":48},{"x":534,"y":88},{"x":540,"y":150},{"x":552,"y":198},{"x":544,"y":227},{"x":522,"y":256},{"x":504.5,"y":263},{"x":471,"y":262},{"x":448,"y":252},{"x":372,"y":214},{"x":290,"y":146},{"x":256,"y":100},{"x":198,"y":104},{"x":182,"y":140},{"x":204,"y":185},{"x":203,"y":201.5},{"x":190,"y":214},{"x":174.5,"y":218},{"x":155,"y":214},{"x":124,"y":222},{"x":113.5,"y":232.5},{"x":95,"y":227},{"x":75.5,"y":211.5},{"x":72,"y":188},{"x":58,"y":136}]
     let data = [{x: 80, y: 506}, {x: 80, y: 308}, {x: 461, y: 311}, {x: 461, y: 257}]
@@ -454,7 +459,7 @@ function copyShape(copyTarget: Konva.Shape, item: any) {
     state.layer.add(state.path);
   }
 
-  function createStage() {
+  function createStage():void {
     state.stage = new Konva.Stage({
       container: 'container',
       width: 1050,
@@ -467,21 +472,23 @@ function copyShape(copyTarget: Konva.Shape, item: any) {
     state.objectLayer = new Konva.Layer();
   }
 
-  function createShape() {
+  function createShape():void {
     makeBackground()
     createPath()
     createLine()
     createRect()
     createCircle(100, 0)
     createAMR()
-
-    state.stage.add(state.layer);
-    state.stage.add(state.robotLayer);
-    state.stage.add(state.objectLayer);
-
+    addLayer([state.layer,state.robotLayer,state.objectLayer] as Konva.Layer[])
   }
 
-  function moveShape(num: number) {
+  function addLayer(layer:Konva.Layer[]):void {
+    layer.forEach((name)=>{
+      state.stage.add(name);
+    })
+  }
+
+  function moveShape(num: number):void {
     switch (num) {
       case 1:
         makeTween(state.robots.robot3, 80, 308, 180)
@@ -537,7 +544,4 @@ function copyShape(copyTarget: Konva.Shape, item: any) {
 </template>
 
 <style scoped>
-.read-the-docs {
-  color: #888;
-}
 </style>
