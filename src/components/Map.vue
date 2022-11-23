@@ -2,8 +2,25 @@
 import Konva from "konva";
 import {onMounted, reactive} from "vue";
 import amrUrl from '../assets/amr.png'
+import * as rgba from '../util/robotState'
 
 defineProps<{ msg: string }>()
+
+enum RobotState {
+  Off,
+  Wait,
+  Charge,
+  Alarm,
+  Transfer,
+  PreRun,
+  Parking,
+  Load
+}
+
+interface KonvaRobot {
+  Konva: Konva.Shape,
+  tween: Konva.Tween
+}
 
 const state = reactive({
   stage: undefined as any,
@@ -14,9 +31,9 @@ const state = reactive({
   circle: undefined as any,
   line: undefined as any,
   path: undefined as any,
-  eventX:0,
-  eventY:0,
-  eventDegree:0,
+  eventX: 0,
+  eventY: 0,
+  eventDegree: 0,
   robots: {
     "robot1": undefined as any,
     "robot2": undefined as any,
@@ -24,6 +41,33 @@ const state = reactive({
   },
   orderNumber: {} as any
 })
+
+function makeTweenRotate(object: any, angle: number) {
+  let test = object.Konva.getAttr('rotation')
+  console.log(test, "test")
+  let tween = new Konva.Tween({
+    node: object.Konva,
+    rotation: angle,
+    onFinish: () => {
+      tween.destroy()
+    }
+  }).play()
+}
+
+function makeTween(object: any, x: number, y: number, angle?: number) {
+  let tween = new Konva.Tween({
+    node: object.Konva,
+    duration: 1,
+    x: x,
+    y: y,
+    onFinish: () => {
+      if (angle) {
+        makeTweenRotate(object, angle);
+      }
+      tween.destroy();
+    }
+  }).play()
+}
 
 function wheel(e: WheelEvent): void {
   if (state.stage != null) {
@@ -179,44 +223,83 @@ function createLine() {
   // state.layer.add(state.line);
 }
 
+function setColor(shape: Konva.Shape, state: any) {
+  shape.cache();
+  shape.filters([Konva.Filters.RGB]);
+  let color;
+  switch (state) {
+    case RobotState.Wait:
+      color = rgba.wait
+      break;
+    case RobotState.Charge:
+      color = rgba.charge
+      break;
+    case RobotState.Alarm:
+      color = rgba.alarm
+      break;
+    case RobotState.Transfer:
+      color = rgba.transfer
+      break;
+    case RobotState.PreRun:
+      color = rgba.preRun
+      break;
+    case RobotState.Parking:
+      color = rgba.parking
+      break;
+    case RobotState.Load:
+      color = rgba.load
+      break;
+    default:
+      color = rgba.off
+      break;
+  }
+  shape.red(color.RED);
+  shape.blue(color.BLUE);
+  shape.green(color.GREEN);
+  shape.alpha(color.ALPHA);
+}
+
 function createAMR() {
   let list = [
     {name: 'robot1', points: {x: 0, y: 0}},
     {name: 'robot2', points: {x: 20, y: 430}},
-    {name: 'robot3', points: {x: 50, y: 80}}
+    {name: 'robot3', points: {x: 80, y: 506}}
   ]
 
   list.forEach(item => {
+    state.robots[item.name] = {
+      Konva: undefined,
+      tween: undefined
+    }
+
     let imageObj = new Image();
     imageObj.onload = function () {
-      state.robots[item.name] = {
-        Konva : new Konva.Image({
-          x: item.points.x, // 왼쪽 꼭지점 기준
-          y: item.points.y, // 왼쪽 꼭지점 기준
-          image: imageObj,
-          scale: {x: 0.2, y: 0.2},
-          offset: { // default 0 !!
-            x: imageObj.width / 2,
-            y: imageObj.height / 2
-          },
-          rotation: 0 // offset x,y 를 기준으로 돌아감 그래서 offset을 너비의 반으로 옮겨야지 가운데서 돌아감
-        }),
-        tween : undefined
-      }
-      state.robotLayer.add(state.robots[item.name].Konva);
-
-      state.robots[item.name].tween = new Konva.Tween({
-        node: state.robots[item.name].Konva,
-        x: state.eventX,
-        y: state.eventY,
-        duration: 1,
-        rotation: state.eventDegree,
-        onUpdate: (e:any) => {
-          console.log(e,"eeeeeeee")
+      let robot = new Konva.Image({
+        x: item.points.x, // 왼쪽 꼭지점 기준
+        y: item.points.y, // 왼쪽 꼭지점 기준
+        image: imageObj,
+        scale: {x: 0.2, y: 0.2},
+        offset: { // default 0 !!
+          x: imageObj.width / 2,
+          y: imageObj.height / 2
         },
-        onFinish: () => console.log('finished'),
+        rotation: 0, // offset x,y 를 기준으로 돌아감 그래서 offset을 너비의 반으로 옮겨야지 가운데서 돌아감
+      })
+      setColor(robot, RobotState.Off)
+
+      robot.on('click tap', function () {
+        alert('정보 보여줘')
+      });
+      robot.on('mouseenter', function () {
+        state.stage.container().style.cursor = 'pointer';
+      });
+      robot.on('mouseleave', function () {
+        state.stage.container().style.cursor = 'default';
       });
 
+      state.robots[item.name].Konva = robot
+
+      state.robotLayer.add(robot);
     };
     imageObj.src = amrUrl;
   })
@@ -308,7 +391,7 @@ function createRect() {
     //   ...state.orderNumber,...{[item.name]:rectInnerText2}
     // }
 
-    state.orderNumber = {...state.orderNumber,...{[item.name]: rectInnerText2}}
+    state.orderNumber = {...state.orderNumber, ...{[item.name]: rectInnerText2}}
 
     group.add(rectInnerText).add(rectInnerText2)
 
@@ -438,7 +521,7 @@ function createStage() {
 
 function createShape() {
   makeBackground()
-  // createPath()
+  createPath()
   createAMR()
   createLine()
   createRect()
@@ -453,128 +536,40 @@ function createShape() {
 
 function moveShape(num: number) {
   console.log(num, "num")
-  // var amplitude = 100;
-  // var period = 2000;
-  //
-  // setTimeout(() => {
-  //   let anim = new Konva.Animation(function (frame) {
-  //     // state.layer.children[0].x(200);
-  //     if (frame) {
-  //       let test = amplitude * Math.sin((frame.time * 2 * Math.PI) / period);
-  //       state.layer.children[0].x(test)
-  //       console.log(test, "계산된 값")
-  //     }
-  //   }, state.layer);
-  //
-  //   anim.start();
-  //   setTimeout(() => {
-  //     anim.stop();
-  //     console.log('ani stop')
-  //   }, 3000)
-  // }, 2000)
-
-  // {x: 80, y: 308}, {x: 461, y: 311}, {x: 461, y: 257},
   switch (num) {
     case 1:
-      // state.robots.robot3.Konva.position({x: 80, y: 308})
-      // state.robots.robot3.Konva.rotation(90)
-      // state.eventX = 80
-      // state.eventY = 308
-      // state.eventDegree = 90
-      // console.log(state.robots.robot3.tween,"tween")
-      // state.robots.robot3.tween.destroy();
-      state.robots.robot3.tween =
-          new Konva.Tween({
-            node: state.robots.robot3.Konva,
-            duration: 1,
-            x:80,
-            y:305,
-            // rotation: 60,
-          }).play()
-
+      makeTween(state.robots.robot3, 80, 308, 180)
+      setColor(state.robots.robot3.Konva,RobotState.Charge)
       state.orderNumber['RACK1'].text('1000')
       break;
     case 2:
-      // state.robots.robot3.position({x: 461, y: 311})
-      // state.robots.robot3.rotation(180)
-      // state.orderNumber['RACK1'].text('90')
-      state.robots.robot3.tween =
-          new Konva.Tween({
-            node: state.robots.robot3.Konva,
-            duration: 1,
-            x:461,
-            y:311,
-            // rotation: 180,
-          }).play()
+      makeTween(state.robots.robot3, 245, 310, 180)
+      setColor(state.robots.robot3.Konva,RobotState.Parking)
+      state.orderNumber['RACK1'].text('90')
       break;
     case 3:
-      // state.robots.robot3.position({x: 461, y: 257})
-      // state.robots.robot3.rotation(90)
-      // state.orderNumber['RACK1'].text('10')
-      state.robots.robot3.tween =
-          new Konva.Tween({
-            node: state.robots.robot3.Konva,
-            duration: 1,
-            x:461,
-            y:257,
-            // rotation:90,
-          }).play()
+      makeTween(state.robots.robot3, 330, 310)
+      setColor(state.robots.robot3.Konva,RobotState.Alarm)
+      state.orderNumber['RACK1'].text('10')
+      break;
+    case 4:
+      makeTween(state.robots.robot3, 395, 311)
+      setColor(state.robots.robot3.Konva,RobotState.Wait)
+      state.orderNumber['RACK1'].text('1000')
+      break;
+    case 5:
+      makeTween(state.robots.robot3, 461, 311)
+      setColor(state.robots.robot3.Konva,RobotState.Load)
+      state.orderNumber['RACK1'].text('1000')
+      break;
+    case 6:
+      makeTween(state.robots.robot3, 461, 257, 270)
+      setColor(state.robots.robot3.Konva,RobotState.Transfer)
+      state.orderNumber['RACK1'].text('1000')
       break;
     default:
       break;
   }
-
-  // // number of steps in animation
-  // var steps = 100;
-  // var pathLen = state.path.getLength();
-  // console.log(pathLen, "pathLen")
-  // var step = pathLen / steps;
-  // console.log(step, "step")
-  // var frameCnt = 0, pos = 0, pt;
-  //
-  // console.log(state.line, "line")
-  // let test = state.line.getClientRect
-  // console.log(test, "test")
-  // let anim = new Konva.Animation(function (frame) {
-  //   pos = pos + 1;
-  //   pt = state.path.getPointAtLength(pos * step);
-  //   console.log(pos, "pos")
-  //   console.log(pos * step, "pos * step")
-  //   console.log(pt, "pt")
-  //   state.circle.position({x: pt.x, y: pt.y});
-  //   // setTimeout(()=>{
-  //   //   anim.stop();
-  //   // },500)
-  // }, state.layer);
-  //
-  // anim.start();
-
-
-  // // number of steps in animation
-  // var steps = 100;
-  // var pathLen = state.path.getLength();
-  // console.log(pathLen, "pathLen")
-  // var step = pathLen / steps;
-  // console.log(step, "step")
-  // var frameCnt = 0, pos = 0, pt;
-  //
-  // console.log(state.line, "line")
-  // let test = state.line.getClientRect
-  // console.log(test, "test")
-  // let anim = new Konva.Animation(function (frame) {
-  //   pos = pos + 1;
-  //   pt = state.path.getPointAtLength(pos * step);
-  //   console.log(pos, "pos")
-  //   console.log(pos * step, "pos * step")
-  //   console.log(pt, "pt")
-  //   state.circle.position({x: pt.x, y: pt.y});
-  //   // setTimeout(()=>{
-  //   //   anim.stop();
-  //   // },500)
-  // }, state.layer);
-  //
-  // anim.start();
-
 }
 
 onMounted(() => {
@@ -587,7 +582,10 @@ onMounted(() => {
   <div>
     <button @click="moveShape(1)" style="margin-bottom: 30px">1이동</button>
     <button @click="moveShape(2)" style="margin-bottom: 30px">2이동</button>
-    <button @click="moveShape(3)" style="margin-bottom: 30px">3이동</button>
+    <button @click="moveShape(3)" style="margin-bottom: 30px">6이동</button>
+    <button @click="moveShape(4)" style="margin-bottom: 30px">8이동</button>
+    <button @click="moveShape(5)" style="margin-bottom: 30px">10이동</button>
+    <button @click="moveShape(6)" style="margin-bottom: 30px">3이동</button>
     <div id="container" style="border: 1px solid black; transition: all ease-in-out 0.8s" @wheel="wheel"></div>
   </div>
 </template>
